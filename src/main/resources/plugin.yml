@@ -1,0 +1,10 @@
+name: KingsParkour
+version: 1.0-SNAPSHOT
+description: Un plugin de parkour
+main: com.davodamc.Main
+commands:
+  parkour:
+    description: Comando para empezar el parkour
+    usage: /parkour
+    aliases:
+      - pk
