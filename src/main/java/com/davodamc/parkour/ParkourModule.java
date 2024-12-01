@@ -9,16 +9,13 @@ import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 public class ParkourModule {
 
     private final Random random = new Random();
-    private final Map<Player, List<Location>> platformLocations = new HashMap<>();
-    public static final Map<Player, BukkitRunnable> parkourTasks = new HashMap<>();
-    private final Map<Player, Integer> parkourPoints = new HashMap<>();
-    private final Map<Player, Integer> parkourTime = new HashMap<>();
-    private final Map<Player, BukkitRunnable> parkourTimers = new HashMap<>();
+    private final Map<Player, ParkourData> playerParkourData = new HashMap<>();
 
     public void generateInitialPlatform(Player player) {
         Location startLocation = player.getLocation().add(0, 20, 0);
@@ -28,14 +25,16 @@ public class ParkourModule {
             return;
         }
 
-        parkourTime.put(player, 0);
-        startTimer(player);
-
+        // Inicializar el ParkourData para el jugador
+        ParkourData data = new ParkourData();
+        data.setTime(0);
+        startTimer(data);
         player.teleport(startLocation.getBlock().getLocation().clone().add(0.5, 1.2, 0.5));
 
         List<Location> platforms = new ArrayList<>();
         platforms.add(startLocation);
-        platformLocations.put(player, platforms);
+        data.setPlatforms(platforms);
+
         PacketUtils.sendPlatformPacket(player, startLocation);
 
         player.sendMessage("");
@@ -45,38 +44,41 @@ public class ParkourModule {
         player.sendMessage(ChatAPI.cc("&fSalta de plataforma en plataforma sin caerte. ¡Suerte!"));
         player.sendMessage("");
 
-        BukkitRunnable parkourTask = createParkourTask(player);
-        parkourTasks.put(player, parkourTask);
+        BukkitRunnable parkourTask = createParkourTask(player, data);
+        data.setParkourTask(parkourTask);
         parkourTask.runTaskTimer(Main.getInstance(), 0L, 5L);
+
+        // Almacenar los datos del jugador
+        playerParkourData.put(player, data);
     }
 
-    private void startTimer(Player player) {
+    private void startTimer(ParkourData data) {
         BukkitRunnable timer = new BukkitRunnable() {
             @Override
             public void run() {
-                parkourTime.put(player, parkourTime.getOrDefault(player, 0) + 1);
+                data.setTime(data.getTime() + 1);
             }
         };
         timer.runTaskTimerAsynchronously(Main.getInstance(), 0L, 20L);
-        parkourTimers.put(player, timer);
+        data.setTimer(timer);
     }
 
-    private BukkitRunnable createParkourTask(Player player) {
+    private BukkitRunnable createParkourTask(Player player, ParkourData data) {
         return new BukkitRunnable() {
             @Override
             public void run() {
-                List<Location> platforms = platformLocations.get(player);
+                List<Location> platforms = data.getPlatforms();
                 if (platforms == null || platforms.isEmpty()) return;
 
                 Location currentPlatform = platforms.get(platforms.size() - 1);
 
                 if (isOnPlatform(player, currentPlatform)) {
                     if (player.getLocation().getY() > currentPlatform.getY()) {
-                        removePreviousPlatform(player);
-                        generateNextPlatform(player);
+                        removePreviousPlatform(player, data);
+                        generateNextPlatform(player, data);
                         PacketUtils.sendActionBar(player, "&f¡Buen salto! &b+1");
                         player.playSound(player.getLocation(), Sound.NOTE_PIANO, 1.0f, 1.0f);
-                        parkourPoints.put(player, parkourPoints.getOrDefault(player, 0) + 1);
+                        data.setPoints(data.getPoints() + 1);
                     }
                 } else if (player.getLocation().getY() < currentPlatform.getY() - 1.5) {
                     resetParkour(player);
@@ -85,8 +87,8 @@ public class ParkourModule {
         };
     }
 
-    private void removePreviousPlatform(Player player) {
-        List<Location> platforms = platformLocations.get(player);
+    private void removePreviousPlatform(Player player, ParkourData data) {
+        List<Location> platforms = data.getPlatforms();
         if (platforms != null && platforms.size() > 1) {
             Location previousPlatform = platforms.get(platforms.size() - 2);
             ParticleUtils.showParticles(player, previousPlatform, EnumParticle.SMOKE_NORMAL, 8);
@@ -97,25 +99,29 @@ public class ParkourModule {
     private void resetParkour(Player player) {
         cancelTimer(player);
 
-        List<Location> platforms = platformLocations.get(player);
-        if (platforms != null) {
-            platforms.forEach(loc -> PacketUtils.removePlatformPacket(player, loc));
+        ParkourData data = playerParkourData.get(player);
+        if (data != null) {
+            List<Location> platforms = data.getPlatforms();
+            if (platforms != null) {
+                platforms.forEach(loc -> PacketUtils.removePlatformPacket(player, loc));
+            }
+
+            player.teleport(new Location(player.getWorld(), -4.5, 84.3, 267.5, 90, 0));
+            player.sendMessage(ChatAPI.cc(ChatAPI.prefix + "&f¡Te has caído del &bparkour&f!"));
+            sendStats(player);
+
+            playerParkourData.remove(player);
+            BukkitRunnable task = data.getParkourTask();
+            if (task != null) task.cancel();
         }
-
-        player.teleport(new Location(player.getWorld(), -4.5, 84.3, 267.5, 90, 0));
-        player.sendMessage(ChatAPI.cc(ChatAPI.prefix + "&f¡Te has caído del &bparkour&f!"));
-        sendStats(player);
-
-        platformLocations.remove(player);
-        parkourPoints.remove(player);
-
-        BukkitRunnable task = parkourTasks.remove(player);
-        if (task != null) task.cancel();
     }
 
     private void cancelTimer(Player player) {
-        BukkitRunnable timer = parkourTimers.remove(player);
-        if (timer != null) timer.cancel();
+        ParkourData data = playerParkourData.get(player);
+        if (data != null) {
+            BukkitRunnable timer = data.getTimer();
+            if (timer != null) timer.cancel();
+        }
     }
 
     private boolean isOnPlatform(Player player, Location platformLocation) {
@@ -130,8 +136,13 @@ public class ParkourModule {
         return isWithinX && isWithinZ && isAbovePlatform;
     }
 
-    public void generateNextPlatform(Player player) {
-        List<Location> platforms = platformLocations.get(player);
+    public ParkourData getPlayerParkourData(Player player) {
+        return playerParkourData.get(player); // Obtiene los datos del jugador si existen
+    }
+
+    public void generateNextPlatform(Player player, @Nullable ParkourData data) {
+        if (data == null) return;
+        List<Location> platforms = data.getPlatforms();
         if (platforms == null) return;
 
         Location currentPlatform = platforms.get(platforms.size() - 1);
@@ -149,14 +160,13 @@ public class ParkourModule {
     }
 
     private boolean isMinDistanceValid(Location current, Location next) {
-        double minHorizontalDistance = 1.5; // Distancia mínima horizontal
-        double maxVerticalDistance = 1; // Distancia máxima vertical permitida
+        double minHorizontalDistance = 1.5;
+        double maxVerticalDistance = 1;
 
         double deltaX = Math.abs(current.getX() - next.getX());
         double deltaZ = Math.abs(current.getZ() - next.getZ());
         double deltaY = Math.abs(current.getY() - next.getY());
 
-        // Verifica la distancia horizontal y restringe la distancia vertical
         return deltaX >= minHorizontalDistance || deltaZ >= minHorizontalDistance && deltaY <= maxVerticalDistance;
     }
 
@@ -172,8 +182,11 @@ public class ParkourModule {
     }
 
     private void sendStats(Player player) {
-        int points = parkourPoints.getOrDefault(player, 0);
-        int time = parkourTime.getOrDefault(player, 0);
+        ParkourData data = playerParkourData.get(player);
+        if (data == null) return;
+
+        int points = data.getPoints();
+        int time = data.getTime();
         double timeBetweenJumps = 0;
         double jumpsPerSecond = 0;
 
@@ -185,10 +198,10 @@ public class ParkourModule {
         player.sendMessage("");
         player.sendMessage(ChatAPI.cc("&9&lKINGSCRAFT &8- &bParkour"));
         player.sendMessage("");
-        player.sendMessage(ChatAPI.cc("&fSaltos: &b" + points));
+        player.sendMessage(ChatAPI.cc("&fPuntos: &b" + points));
         player.sendMessage(ChatAPI.cc("&fTiempo: &b" + time + " segundos"));
-        player.sendMessage(ChatAPI.cc("&fTiempo entre saltos: &b" + timeBetweenJumps + " segundos/salto"));
-        player.sendMessage(ChatAPI.cc("&fSaltos por segundo: &b" + jumpsPerSecond + " saltos/segundo"));
+        player.sendMessage(ChatAPI.cc("&fSaltos por segundo: &b" + jumpsPerSecond));
+        player.sendMessage(ChatAPI.cc("&fTiempo entre saltos: &b" + timeBetweenJumps + " segundos"));
         player.sendMessage("");
     }
 }
