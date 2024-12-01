@@ -23,7 +23,7 @@ public class ParkourModule {
     public void generateInitialPlatform(Player player) {
         Location startLocation = player.getLocation().add(0, 20, 0);
 
-        if (!isAreaClear(startLocation, 1, 2)) {
+        if (!isAreaClear(startLocation)) {
             player.sendMessage(ChatAPI.cc(ChatAPI.prefix + "&c¡No hay suficiente espacio para generar el parkour!"));
             return;
         }
@@ -141,7 +141,7 @@ public class ParkourModule {
             nextPlatform = currentPlatform.clone().add(
                     random.nextInt(6) - 3, random.nextInt(2), random.nextInt(6) - 3
             );
-        } while (!isAreaClear(nextPlatform, 1, 2) || !isMinDistanceValid(currentPlatform, nextPlatform));
+        } while (isAreaNotClear(nextPlatform) || !isMinDistanceValid(currentPlatform, nextPlatform));
 
         ParticleUtils.showParticles(player, nextPlatform, EnumParticle.FIREWORKS_SPARK, 6);
         platforms.add(nextPlatform);
@@ -160,10 +160,10 @@ public class ParkourModule {
         return deltaX >= minHorizontalDistance || deltaZ >= minHorizontalDistance && deltaY <= maxVerticalDistance;
     }
 
-    private boolean isAreaClear(Location location, int radius, int height) {
-        for (int x = -radius; x <= radius; x++) {
-            for (int z = -radius; z <= radius; z++) {
-                for (int y = 0; y < height; y++) {
+    private boolean isAreaNotClear(Location location) {
+        for (int x = -1; x <= 1; x++) {
+            for (int z = -1; z <= 1; z++) {
+                for (int y = 0; y < 2; y++) {
                     if (location.clone().add(x, y, z).getBlock().getType() != Material.AIR) return false;
                 }
             }
@@ -187,8 +187,8 @@ public class ParkourModule {
         player.sendMessage("");
         player.sendMessage(ChatAPI.cc("&fSaltos: &b" + points));
         player.sendMessage(ChatAPI.cc("&fTiempo: &b" + time + " segundos"));
-        player.sendMessage(ChatAPI.cc("&fTiempo entre saltos: &b" + timeBetweenJumps + " segundos"));
-        player.sendMessage(ChatAPI.cc("&fSaltos por segundo: &b" + jumpsPerSecond + " saltos"));
+        player.sendMessage(ChatAPI.cc("&fTiempo entre saltos: &b" + timeBetweenJumps + " segundos/salto"));
+        player.sendMessage(ChatAPI.cc("&fSaltos por segundo: &b" + jumpsPerSecond + " saltos/segundo"));
         player.sendMessage("");
     }
 }
