@@ -39,7 +39,7 @@ public class ParkourModule {
         PacketUtils.sendPlatformPacket(player, startLocation);
 
         player.sendMessage("");
-        player.sendMessage(ChatAPI.cc("&9&lKINGSCRAFT &8- &bParkour "));
+        player.sendMessage(ChatAPI.cc("&9&lKINGSCRAFT &8- &bParkour"));
         player.sendMessage("");
         player.sendMessage(ChatAPI.cc("&f¡Bienvenido &b" + player.getName() + " &fal parkour de KingsCraft!"));
         player.sendMessage(ChatAPI.cc("&fSalta de plataforma en plataforma sin caerte. ¡Suerte!"));
@@ -176,9 +176,7 @@ public class ParkourModule {
         int time = parkourTime.getOrDefault(player, 0);
         double timeBetweenJumps = 0;
 
-        if (points > 0 && time > 0) {
-            timeBetweenJumps = Math.floor(((double) points / time) * 100) / 100.0;
-        }
+        if (points > 0 && time > 0) timeBetweenJumps = Math.floor(((double) time / points) * 100) / 100.0;
 
         player.sendMessage("");
         player.sendMessage(ChatAPI.cc("&9&lKINGSCRAFT &8- &bParkour"));
