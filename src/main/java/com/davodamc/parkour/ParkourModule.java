@@ -23,7 +23,7 @@ public class ParkourModule {
     public void generateInitialPlatform(Player player) {
         Location startLocation = player.getLocation().add(0, 20, 0);
 
-        if (!isAreaClear(startLocation)) {
+        if (isAreaNotClear(startLocation)) {
             player.sendMessage(ChatAPI.cc(ChatAPI.prefix + "&c¡No hay suficiente espacio para generar el parkour!"));
             return;
         }
