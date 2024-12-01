@@ -23,7 +23,7 @@ public class ParkourModule {
     public void generateInitialPlatform(Player player) {
         Location startLocation = player.getLocation().add(0, 20, 0);
 
-        if (isAreaNotClear(startLocation)) {
+        if (!isAreaClear(startLocation)) {
             player.sendMessage(ChatAPI.cc(ChatAPI.prefix + "&c¡No hay suficiente espacio para generar el parkour!"));
             return;
         }
@@ -141,7 +141,7 @@ public class ParkourModule {
             nextPlatform = currentPlatform.clone().add(
                     random.nextInt(6) - 3, random.nextInt(2), random.nextInt(6) - 3
             );
-        } while (isAreaNotClear(nextPlatform) || !isMinDistanceValid(currentPlatform, nextPlatform));
+        } while (!isAreaClear(nextPlatform) || !isMinDistanceValid(currentPlatform, nextPlatform));
 
         ParticleUtils.showParticles(player, nextPlatform, EnumParticle.FIREWORKS_SPARK, 6);
         platforms.add(nextPlatform);
@@ -160,7 +160,7 @@ public class ParkourModule {
         return deltaX >= minHorizontalDistance || deltaZ >= minHorizontalDistance && deltaY <= maxVerticalDistance;
     }
 
-    private boolean isAreaNotClear(Location location) {
+    private boolean isAreaClear(Location location) {
         for (int x = -1; x <= 1; x++) {
             for (int z = -1; z <= 1; z++) {
                 for (int y = 0; y < 2; y++) {
