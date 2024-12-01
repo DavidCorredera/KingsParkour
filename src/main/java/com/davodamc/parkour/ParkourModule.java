@@ -175,8 +175,12 @@ public class ParkourModule {
         int points = parkourPoints.getOrDefault(player, 0);
         int time = parkourTime.getOrDefault(player, 0);
         double timeBetweenJumps = 0;
+        double jumpsPerSecond = 0;
 
-        if (points > 0 && time > 0) timeBetweenJumps = Math.floor(((double) time / points) * 100) / 100.0;
+        if (points > 0 && time > 0) {
+            timeBetweenJumps = Math.floor(((double) time / points) * 100) / 100.0;
+            jumpsPerSecond = Math.floor(((double) points / time) * 100) / 100.0;
+        }
 
         player.sendMessage("");
         player.sendMessage(ChatAPI.cc("&9&lKINGSCRAFT &8- &bParkour"));
@@ -184,6 +188,7 @@ public class ParkourModule {
         player.sendMessage(ChatAPI.cc("&fSaltos: &b" + points));
         player.sendMessage(ChatAPI.cc("&fTiempo: &b" + time + " segundos"));
         player.sendMessage(ChatAPI.cc("&fTiempo entre saltos: &b" + timeBetweenJumps + " segundos"));
+        player.sendMessage(ChatAPI.cc("&fSaltos por segundo: &b" + jumpsPerSecond + " saltos"));
         player.sendMessage("");
     }
 }
